@@ -213,7 +213,6 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
             print(''.join(pred_text))
 
 if __name__ == '__main__':
-
     config = get_config()   # get configuration parameters
 
     # train_set: (input_set, target_set); input_set: (nbatches, batch_size, seq_length)

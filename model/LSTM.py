@@ -55,14 +55,14 @@ class LSTM(nn.Module):
                 output_gate = self.Wio_b[i](input) + self.Who_b[i](hx[i])
 
                 # apply non-linearity function
-                input_gate = F.sigmoid(input_gate)
-                forget_gate = F.sigmoid(forget_gate)
-                cell_gate = F.tanh(cell_gate)
-                output_gate = F.sigmoid(output_gate)
+                input_gate = torch.sigmoid(input_gate)
+                forget_gate = torch.sigmoid(forget_gate)
+                cell_gate = torch.tanh(cell_gate)
+                output_gate = torch.sigmoid(output_gate)
 
                 # current states
                 cy = forget_gate * cx[i] + input_gate * cell_gate
-                hy = output_gate * F.tanh(cy)
+                hy = output_gate * torch.tanh(cy)
 
                 if self.num_layers == 1:
                     hx = hy.unsqueeze(0)    # (batch_size, hidden_size) -> (1, batch_size, hidden_size)
