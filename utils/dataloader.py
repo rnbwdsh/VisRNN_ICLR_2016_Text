@@ -16,26 +16,28 @@ import pdb
 vocab_file: store char_to_int and int_to_char dictionaries as a tuple
 data_file: store converted int
 '''
+
+
 def text_to_tensor(input_file, vocab_file, data_file):
     print('Loading text file...')
 
     try:
-        file = unidecode.unidecode(open(input_file).read())
+        file = unidecode.unidecode(open(input_file, 'r', encoding='utf-8-sig').read())
     except IOError:
-        print("Could not read file: " + input_file) # fail to open input text file
+        print("Could not read file: " + input_file)  # fail to open input text file
         sys.exit()
 
     vocab = ''
-    all_chars = string.printable    # all printable characters in python
+    all_chars = string.printable  # all printable characters in python
     for ch in all_chars:
         if ch in file:
-            vocab += ch # select characters that appear in the file
+            vocab += ch  # select characters that appear in the file
 
-    char_to_int = {}    # mapping from character to int
+    char_to_int = {}  # mapping from character to int
     for i in range(len(vocab)):
         char_to_int[vocab[i]] = i
 
-    int_to_char = {}    # mapping from int to character
+    int_to_char = {}  # mapping from int to character
     for k, v in char_to_int.items():
         int_to_char[v] = k
 
@@ -47,11 +49,12 @@ def text_to_tensor(input_file, vocab_file, data_file):
         currlen = 0
         while True:
             raw_data = f.read(cache_len)
-            if not raw_data: # end of file
+            if not raw_data:  # end of file
                 break
             for i in range(len(raw_data)):
                 data[currlen + i] = char_to_int[raw_data[i]]
             currlen += len(raw_data)
+
     f.close()
 
     # save vocabulary
@@ -65,6 +68,7 @@ def text_to_tensor(input_file, vocab_file, data_file):
     f = open(data_file, 'wb')
     pickle.dump(data, f)
     f.close()
+
 
 # create dataset: train, val and test
 def create_dataset(config):
@@ -130,35 +134,35 @@ def create_dataset(config):
     # for each sequence, we generate a target: (a1, a2, ..., an-1, an) -> (a2, ..., an-1, an, a1)
     target = torch.ByteTensor(data.shape)
     for i in range(int(len(data) / seq_length)):
-        src_seq = data[i * seq_length : (i + 1) * seq_length]   # length: seq_length
+        src_seq = data[i * seq_length: (i + 1) * seq_length]  # length: seq_length
         dest_seq = src_seq.clone()
-        dest_seq[0: -1] = src_seq[1:]   # '-1' is not included
+        dest_seq[0: -1] = src_seq[1:]  # '-1' is not included
         dest_seq[-1] = src_seq[0]
-        target[i * seq_length : (i + 1) * seq_length] = dest_seq
+        target[i * seq_length: (i + 1) * seq_length] = dest_seq
 
     train_batches = math.floor(split_fractions['train_frac'] * (len(data) / (batch_size * seq_length)))
-    train_idx = 0   # start point of train set
+    train_idx = 0  # start point of train set
     input_set = torch.LongTensor(train_batches, batch_size, seq_length)
     target_set = torch.LongTensor(train_batches, batch_size, seq_length)
     for i in range(train_batches):
         for j in range(batch_size):
             start_idx = train_idx + i * (batch_size * seq_length) + j * seq_length
             end_idx = start_idx + seq_length
-            input_set[i][j] = data[start_idx : end_idx]
+            input_set[i][j] = data[start_idx: end_idx]
             target_set[i][j] = target[start_idx: end_idx]
-    train_set = (input_set, target_set) # a tuple of two 3d tensors
+    train_set = (input_set, target_set)  # a tuple of two 3d tensors
 
     val_batches = math.floor(split_fractions['val_frac'] * (len(data) / (batch_size * seq_length)))
-    val_idx = train_batches * batch_size * seq_length   # start point of validation set
+    val_idx = train_batches * batch_size * seq_length  # start point of validation set
     input_set = torch.LongTensor(val_batches, batch_size, seq_length)
     target_set = torch.LongTensor(val_batches, batch_size, seq_length)
     for i in range(val_batches):
         for j in range(batch_size):
             start_idx = val_idx + i * (batch_size * seq_length) + j * seq_length
             end_idx = start_idx + seq_length
-            input_set[i][j] = data[start_idx : end_idx]
+            input_set[i][j] = data[start_idx: end_idx]
             target_set[i][j] = target[start_idx: end_idx]
-    val_set = (input_set, target_set)   # a tuple of two 3d tensors
+    val_set = (input_set, target_set)  # a tuple of two 3d tensors
 
     test_batches = math.floor(split_fractions['test_frac'] * (len(data) / (batch_size * seq_length)))
     test_idx = (train_batches + val_batches) * batch_size * seq_length  # start point of test set

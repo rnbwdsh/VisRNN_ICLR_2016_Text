@@ -9,11 +9,11 @@ from config import *
 
 import pdb
 
+
 # build and train a model
 def train(train_set, val_set, vocab_size, config):
-
     # initialize a model
-    char_rnn = CharRNN(vocab_size, config.hidden_size, vocab_size, model = config.model, n_layers = config.n_layers)
+    char_rnn = CharRNN(vocab_size, config.hidden_size, vocab_size, model=config.model, n_layers=config.n_layers)
     # ship to gpu if possible
     if torch.cuda.is_available() and config.cuda:
         char_rnn.cuda()
@@ -22,17 +22,17 @@ def train(train_set, val_set, vocab_size, config):
     train_input_set, train_target_set = train_set[0], train_set[1]
     val_input_set, val_target_set = val_set[0], val_set[1]
 
-    criterion = nn.CrossEntropyLoss()   # include softmax
-    optimizer = torch.optim.Adam(char_rnn.parameters(), lr = config.learning_rate)
+    criterion = nn.CrossEntropyLoss()  # include softmax
+    optimizer = torch.optim.Adam(char_rnn.parameters(), lr=config.learning_rate)
     # learning rate decay
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size = 10, gamma = 0.95)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.95)
 
     best_val_loss = sys.float_info.max
     try:
-        for epoch_idx in tqdm(range(1, config.max_epochs + 1)): # for evary epoch
+        for epoch_idx in tqdm(range(1, config.max_epochs + 1)):  # for evary epoch
             print("Training for %d epochs..." % epoch_idx)
             running_loss = 0.0
-            scheduler.step()    # lr decay
+
 
             # initialize hidden states for every epoch
             hidden = char_rnn.init_hidden(config.batch_size)  # (n_layers * n_directions, batch_size, hidden_size)
@@ -40,9 +40,9 @@ def train(train_set, val_set, vocab_size, config):
             if torch.cuda.is_available() and config.cuda:
                 hidden = tuple([x.cuda() for x in hidden])
 
-            for batch_idx in range(1, train_input_set.shape[0] + 1):   # for every batch
+            for batch_idx in range(1, train_input_set.shape[0] + 1):  # for every batch
                 # for every batch
-                optimizer.zero_grad()   # zero the parameter gradients
+                optimizer.zero_grad()  # zero the parameter gradients
 
                 train_input = train_input_set[batch_idx - 1]
 
@@ -54,7 +54,7 @@ def train(train_set, val_set, vocab_size, config):
                 loss = 0
                 for i in range(config.seq_length):  # for every time step in this batch
                     # forward pass
-                    train_output, hidden, _ = char_rnn(Variable(train_input[:, i]), hidden) # ignore gate values
+                    train_output, hidden, _ = char_rnn(Variable(train_input[:, i]), hidden)  # ignore gate values
                     # add up loss at each time step
                     loss += criterion(train_output.view(config.batch_size, -1).cpu(),
                                       Variable(train_target_set[batch_idx - 1][:, i]))
@@ -66,9 +66,10 @@ def train(train_set, val_set, vocab_size, config):
                 # backward
                 loss.backward()
                 optimizer.step()
+                scheduler.step()  # lr decay
 
                 # print statistics
-                running_loss += loss.data[0]
+                running_loss += loss.item()
                 if batch_idx % config.print_interval == 0:  # print_interval batches
                     print('[%d, %4d] loss: %.3f' % (epoch_idx, batch_idx, running_loss / config.print_interval))
                     running_loss = 0.0
@@ -110,6 +111,7 @@ def train(train_set, val_set, vocab_size, config):
         print("Saving before abnormal quit...")
         torch.save(char_rnn.state_dict(), path.join(config.model_dir, config.model + '.pth'))
 
+
 # use the trained model to make prediction
 def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
     # no trained model, train a new one
@@ -117,7 +119,7 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
         train(train_set, val_set, vocab_size, config)
 
     # load a trained model
-    char_rnn = CharRNN(vocab_size, config.hidden_size, vocab_size, model = config.model, n_layers = config.n_layers)
+    char_rnn = CharRNN(vocab_size, config.hidden_size, vocab_size, model=config.model, n_layers=config.n_layers)
     char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     char_rnn.eval()
 
@@ -129,7 +131,7 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
     test_input_set, test_target_set = test_set[0], test_set[1]
 
     # randomly choose a sequence in train_set to warm up the network
-    train_input_set, _ = train_set[0], train_set[1] # train_input_set: (train_batches, batch_size, seq_length)
+    train_input_set, _ = train_set[0], train_set[1]  # train_input_set: (train_batches, batch_size, seq_length)
     # random batch index
     train_batch_idx = np.random.choice(train_input_set.shape[0])
     # random sequence index
@@ -138,7 +140,7 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
     warmup_seq = train_input_set[train_batch_idx][train_seq_idx].unsqueeze(0)
 
     # initialize hidden state
-    hidden = char_rnn.init_hidden(1)   # here, batch_size = 1
+    hidden = char_rnn.init_hidden(1)  # here, batch_size = 1
 
     # ship to gpu if possible
     if torch.cuda.is_available() and config.cuda:
@@ -172,7 +174,7 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
             output, hidden, _ = char_rnn(Variable(idx), hidden)  # idx: (1, 1, input_size); ignore gate values
 
             # choose the one with the highest value
-            prob, idx = torch.topk(output.data, 1, dim = 2)
+            prob, idx = torch.topk(output.data, 1, dim=2)
             # add predicted value
             pred.append(idx.cpu().squeeze()[0])
 
@@ -183,10 +185,10 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
                     idx = idx.cuda()
 
                 # forward pass
-                output, hidden, _ = char_rnn(Variable(idx.view(1, -1)), hidden) # ingore gate values
+                output, hidden, _ = char_rnn(Variable(idx.view(1, -1)), hidden)  # ingore gate values
 
                 # choose the one with the highest value
-                prob, idx = torch.topk(output.data, 1, dim = 2)
+                prob, idx = torch.topk(output.data, 1, dim=2)
                 # add predicted value
                 pred.append(idx.cpu().squeeze()[0])
 
@@ -212,13 +214,14 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
             print('Predicted -------------------------------------------------------')
             print(''.join(pred_text))
 
+
 if __name__ == '__main__':
-    config = get_config()   # get configuration parameters
+    config = get_config()  # get configuration parameters
 
     # train_set: (input_set, target_set); input_set: (nbatches, batch_size, seq_length)
-    train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(config)   # val_set and test_set are similar to train_set
+    train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(
+        config)  # val_set and test_set are similar to train_set
 
     # train(train_set, val_set, len(char_to_int), config)
 
     pred(test_set, train_set, val_set, int_to_char, len(char_to_int), config)
-
