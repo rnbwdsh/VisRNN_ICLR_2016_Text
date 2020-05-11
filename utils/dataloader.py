@@ -8,7 +8,8 @@ import string
 import sys
 import os
 import os.path as path
-
+import numpy as np
+import sklearn
 import pdb
 
 # convert all characters in input_file into int
@@ -22,30 +23,34 @@ def text_to_tensor(input_file, vocab_file, data_file):
     print('Loading text file...')
 
     try:
-        file = unidecode.unidecode(open(input_file, 'r', encoding='utf-8-sig').read())
+        file = open(input_file, 'r', encoding='utf-8-sig').read()
     except IOError:
         print("Could not read file: " + input_file)  # fail to open input text file
         sys.exit()
 
-    vocab = ''
+    '''vocab = ''
     all_chars = string.printable  # all printable characters in python
     for ch in all_chars:
         if ch in file:
             vocab += ch  # select characters that appear in the file
-
     char_to_int = {}  # mapping from character to int
     for i in range(len(vocab)):
         char_to_int[vocab[i]] = i
-
     int_to_char = {}  # mapping from int to character
     for k, v in char_to_int.items():
-        int_to_char[v] = k
+        int_to_char[v] = k'''
+
+    vocab = tuple(set(file))
+    int_to_char = dict(enumerate(vocab))  # mapping from int to character
+    char_to_int = {ch: ii for ii, ch in int_to_char.items()}
+
+
 
     # construct a tensor with all data
     print('Putting data into tensor...')
-    data = torch.ByteTensor(len(file))  # store in into 1D first, then rearrange
+    data = np.array([char_to_int[ch] for ch in file]) # store in into 1D first, then rearrange
     cache_len = 10000
-    with open(input_file, 'r') as f:
+    with open(input_file, 'r',encoding='utf-8-sig') as f:
         currlen = 0
         while True:
             raw_data = f.read(cache_len)
@@ -131,7 +136,7 @@ def create_dataset(config):
     assert split_fractions['test_frac'] >= 0 and split_fractions['test_frac'] <= 1, \
         'Bad split fraction ' + str(split_fractions['test_frac']) + ' for test, not between 0 and 1'
 
-    # for each sequence, we generate a target: (a1, a2, ..., an-1, an) -> (a2, ..., an-1, an, a1)
+    ''''# for each sequence, we generate a target: (a1, a2, ..., an-1, an) -> (a2, ..., an-1, an, a1)
     target = torch.ByteTensor(data.shape)
     for i in range(int(len(data) / seq_length)):
         src_seq = data[i * seq_length: (i + 1) * seq_length]  # length: seq_length
@@ -186,5 +191,62 @@ def create_dataset(config):
           (train_batches, val_batches, test_batches))
 
     gc.collect()
-
+   '''
+    test_batches = math.floor(split_fractions['test_frac'] * (len(data) / (batch_size * seq_length)))
+    train_batches = math.floor(split_fractions['train_frac'] * (len(data) / (batch_size * seq_length)))
+    val_batches = math.floor(split_fractions['val_frac'] * (len(data) / (batch_size * seq_length)))
+    # print a summary of dataset
+    print('Data load done! Number of data batches in train: %d, val: %d, test: %d' %
+          (train_batches, val_batches, test_batches))
+    train_idx = train_batches * batch_size * seq_length
+    val_idx = (train_batches + val_batches) * batch_size * seq_length
+    train_set = data[:train_idx]
+    val_set = data[train_idx:val_idx]
+    test_set = data[val_idx:]
     return train_set, val_set, test_set, (char_to_int, int_to_char)
+
+
+def one_hot_encode(arr, n_labels):
+    # Initialize the the encoded array
+    one_hot = np.zeros((np.multiply(*arr.shape), n_labels), dtype=np.float32)
+
+    # Fill the appropriate elements with ones
+    one_hot[np.arange(one_hot.shape[0]), arr.flatten()] = 1.
+
+    # Finally reshape it to get back to the original array
+    one_hot = one_hot.reshape((*arr.shape, n_labels))
+
+    return one_hot
+
+
+def get_batches(arr, batch_size, seq_length):
+    '''Create a generator that returns batches of size
+       batch_size x seq_length from arr.
+
+       Arguments
+       ---------
+       arr: Array you want to make batches from
+       batch_size: Batch size, the number of sequences per batch
+       seq_length: Number of encoded chars in a sequence
+    '''
+
+    batch_size_total = batch_size * seq_length
+    # total number of batches we can make, // integer division, round down
+    n_batches = len(arr) // batch_size_total
+
+    # Keep only enough characters to make full batches
+    arr = arr[:n_batches * batch_size_total]
+    # Reshape into batch_size rows, n. of first row is the batch size, the other lenght is inferred
+    arr = arr.reshape((batch_size, -1))
+
+    # iterate through the array, one sequence at a time
+    for n in range(0, arr.shape[1], seq_length):
+        # The features
+        x = arr[:, n:n + seq_length]
+        # The targets, shifted by one
+        y = np.zeros_like(x)
+        try:
+            y[:, :-1], y[:, -1] = x[:, 1:], arr[:, n + seq_length]
+        except IndexError:
+            y[:, :-1], y[:, -1] = x[:, 1:], arr[:, 0]
+        yield x, y

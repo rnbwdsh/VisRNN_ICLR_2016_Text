@@ -64,7 +64,7 @@ def vis_cell(test_set, int_to_char, vocab_size, config):
             # current sequence
             test_seq = test_batch[test_seq_idx - 1]
             # append to seq
-            seq.extend([int_to_char[x] for x in test_seq])  # do not use append() function
+            seq.extend([int_to_char[x.item()] for x in test_seq])  # do not use append() function
 
             # (seq_len) -> (1, seq_len)
             test_seq = test_seq.view(1, -1)
