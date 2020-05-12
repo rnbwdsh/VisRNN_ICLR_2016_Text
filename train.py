@@ -309,7 +309,7 @@ def new_train(train_data, val_data, vocab, config, clip=5):
                       "Step: {}...".format(counter),
                       "Loss: {:.4f}...".format(loss.item()),
                       "Val Loss: {:.4f}".format(np.mean(val_losses)))
-        torch.save(net.state_dict(), path.join(config.model_dir, config.model + '.pth'))
+    torch.save(net.state_dict(), path.join(config.model_dir, config.model + '.pth'))
 
 
 def new_pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
@@ -356,22 +356,16 @@ def new_pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_
             top_ch = top_ch.numpy().squeeze()
 
         # select the likely next character with some element of randomness
-        p = p.numpy().squeeze()
-        char = np.random.choice(top_ch, p=p / p.sum())
-        correct += int(char.eq(targets.view_as(char)).sum().item())
+        chars = []
+        for i in range(p.shape[0]):
+            pk = p[i].squeeze()
+            pk = pk.numpy()
+            char = np.random.choice(top_ch[i], p=pk / pk.sum())
+            chars.append(char)
+    chars = np.array(chars)
+    accuracy = float(np.where(chars == targets.flatten().numpy())[0].size) / chars.size
+    print('Overall Accuracy:',accuracy)
 
-        target_text = []
-        pred_text = []
-        for i in range(len(targets)):
-            target_text.append(int_to_char[test_set[i]])  # produces error as we get a value == 111 which is not possible because the largest key value is 84 ( will check his int_to_char function
-            pred_text.append(int_to_char[pred[i]])
-
-        # display target text and predicted text
-        print('Accuracy:', correct/len(test_set))
-        print('Target ----------------------------------------------------------')
-        print(''.join(target_text))  # convert from array to string
-        print('Predicted -------------------------------------------------------')
-        print(''.join(pred_text))
 
 
 
