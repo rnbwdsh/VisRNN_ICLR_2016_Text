@@ -84,8 +84,8 @@ class CharRNN(nn.Module):
     def forward(self, x, hidden):
         ''' Forward pass through the network.
             These inputs are x, and the hidden/cell state `hidden`. '''
-
         ## TODO: Get the outputs and the new hidden state from the lstm
+        self.to("cuda" if torch.cuda.is_available() else "cpu")
         r_output, hidden = self.model(x, hidden)
 
         ## TODO: pass through a dropout layer
