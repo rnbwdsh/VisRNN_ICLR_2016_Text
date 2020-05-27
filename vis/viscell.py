@@ -7,13 +7,14 @@ from model import *
 
 import pdb
 
-def vis_cell(test_set, int_to_char, vocab_size, config):
+
+def vis_cell(test_set, int_to_char, char_to_int, config):
     # no trained model, train a new one
     if not path.exists(path.join(config.model_dir, config.model + '.pth')):
         raise Exception('No such a trained model! Please train a new model first!')
 
     # load a trained model
-    char_rnn = CharRNN(vocab_size, config.hidden_size, vocab_size, model = config.model, n_layers = config.n_layers)
+    char_rnn = new_CharRNN(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     char_rnn.eval()
 
@@ -25,9 +26,9 @@ def vis_cell(test_set, int_to_char, vocab_size, config):
     test_input_set, _ = test_set[0], test_set[1]  # test_input_set: (test_batches, batch_size, seq_length)
 
     # randomly choose a sequence in test set to warm up the network
-    test_batch_idx = np.random.choice(test_input_set.shape[0])    # random batch index
-    test_seq_idx = np.random.choice(config.batch_size) # random sequence index
-    warmup_seq = test_input_set[test_batch_idx][test_seq_idx].unsqueeze(0)   # random sequence
+    test_batch_idx = np.random.choice(test_input_set.shape[0])  # random batch index
+    test_seq_idx = np.random.choice(config.batch_size)  # random sequence index
+    warmup_seq = test_input_set[test_batch_idx][test_seq_idx].unsqueeze(0)  # random sequence
 
     # initialize hidden state
     hidden = char_rnn.init_hidden(1)  # here, batch_size = 1
@@ -42,9 +43,9 @@ def vis_cell(test_set, int_to_char, vocab_size, config):
         # get final hidden state
         _, hidden, _ = char_rnn(Variable(warmup_seq[:, i]), hidden)
 
-    seq = []    # store all test sequences in character form
-    cell = []   # 2d array, store all cell state values; each character corresponds to a row; each row is a c_n
-    stop_flag = False   # flag to stop
+    seq = []  # store all test sequences in character form
+    cell = []  # 2d array, store all cell state values; each character corresponds to a row; each row is a c_n
+    stop_flag = False  # flag to stop
     for test_batch_idx in range(1, test_input_set.shape[0] + 1):
 
         # whether to stop
@@ -77,8 +78,8 @@ def vis_cell(test_set, int_to_char, vocab_size, config):
             for i in range(config.seq_length):  # for every time step in this batch
                 # forward pass, we do not care about output
                 _, hidden, _ = char_rnn(Variable(test_seq[:, i]), hidden)
-                (_, c_n) = hidden   # c_n: (1, 1, hidden_size); ignore h_n
-                cell.append(c_n.data.cpu().squeeze().numpy())   # use append() to form a multi-dimensional array
+                (_, c_n) = hidden  # c_n: (1, 1, hidden_size); ignore h_n
+                cell.append(c_n.data.cpu().squeeze().numpy())  # use append() to form a multi-dimensional array
 
             # print progress information
             print('Processing [batch: %d, sequence: %3d]...' % (test_batch_idx, test_seq_idx))
@@ -93,11 +94,9 @@ def vis_cell(test_set, int_to_char, vocab_size, config):
         char_cell['cell_layer_' + str(j + 1)] = []
 
     total_char = len(cell)
-    for i in range(total_char): # for each character (time step)
-        for j in range(config.n_layers):   # for each layer
+    for i in range(total_char):  # for each character (time step)
+        for j in range(config.n_layers):  # for each layer
             char_cell['cell_layer_' + str(j + 1)].append(cell[i][j].tolist())
 
     with open(path.join(config.vis_dir, 'char_cell.json'), 'w') as json_file:
         json.dump(char_cell, json_file)
-
-

@@ -9,7 +9,7 @@ from config import *
 
 import pdb
 
-
+'''
 # build and train a model
 def train(train_set, val_set, vocab_size, config):
     # initialize a model
@@ -54,7 +54,7 @@ def train(train_set, val_set, vocab_size, config):
                 loss = 0.0
                 for i in range(config.seq_length):  # for every time step in this batch
                     # forward pass
-                    train_output, hidden, _ = char_rnn(Variable(train_input[:, i]), hidden)  # ignore gate values
+                    train_output, hidden, _ = char_rnn(Variable(train_input), hidden)  # ignore gate values
                     # add up loss at each time step
                     loss += criterion(train_output.view(config.batch_size, -1),
                                       train_target_set[batch_idx - 1][:, i])
@@ -209,8 +209,8 @@ def pred(test_set, train_set, val_set, int_to_char, vocab_size, config):
             print(''.join(target_text))  # convert from array to string
             print('Predicted -------------------------------------------------------')
             print(''.join(pred_text))
-
-def new_train(train_data, val_data, vocab, config, clip=5):
+'''
+def train(train_data, val_data, vocab, config, clip=5):
     ''' Training a network
 
         Arguments
@@ -228,7 +228,7 @@ def new_train(train_data, val_data, vocab, config, clip=5):
 
     '''
     train_on_gpu = torch.cuda.is_available()
-    net = new_CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    net = CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     net.train()
     epochs = config.max_epochs
     batch_size = config.batch_size
@@ -312,19 +312,18 @@ def new_train(train_data, val_data, vocab, config, clip=5):
     torch.save(net.state_dict(), path.join(config.model_dir, config.model + '.pth'))
 
 
-def new_pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
+def pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
     if not path.exists(path.join(config.model_dir, config.model + '.pth')):
-        new_train(train_set, val_set, (int_to_char,char_to_int), config)
+        train(train_set, val_set, (int_to_char,char_to_int), config)
 
     # load a trained model
-    net = new_CharRNN(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    net = CharRNN(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     net.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     net.eval()
     batch_size = config.batch_size
     seq_length = config.seq_length
     test_h = net.init_hidden(batch_size)
     train_on_gpu = torch.cuda.is_available()
-    correct=0
 
     for x, y in get_batches(test_set, batch_size, seq_length):
         # One-hot encode our data and make them Torch tensors
@@ -362,9 +361,9 @@ def new_pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_
             pk = pk.numpy()
             char = np.random.choice(top_ch[i], p=pk / pk.sum())
             chars.append(char)
-    chars = np.array(chars)
-    accuracy = float(np.where(chars == targets.flatten().numpy())[0].size) / chars.size
-    print('Overall Accuracy:',accuracy)
+        chars = np.array(chars)
+        accuracy = float(np.where(chars == targets.flatten().numpy())[0].size) / chars.size
+        print('Overall Accuracy:',accuracy)
 
 
 
@@ -381,5 +380,5 @@ if __name__ == '__main__':
 
     # train(train_set, val_set, len(char_to_int), config)
 
-    #pred(test_set, train_set, val_set, int_to_char, len(char_to_int), config)
-    new_pred(test_set, train_set, val_set, int_to_char, char_to_int, config,5)
+
+    pred(test_set, train_set, val_set, int_to_char, char_to_int, config,5)

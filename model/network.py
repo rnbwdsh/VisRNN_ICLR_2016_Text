@@ -10,7 +10,7 @@ from .LSTM import *
 import pdb
 
 
-class CharRNN(nn.Module):
+'''class CharRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, model="lstm", n_layers=1):
         super(CharRNN, self).__init__()
 
@@ -47,10 +47,10 @@ class CharRNN(nn.Module):
             return (Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size)),
                     Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size)))
 
-        return Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size))
+        return Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size))'''
 
 
-class new_CharRNN(nn.Module):
+class CharRNN(nn.Module):
     def __init__(self, tokens, n_hidden=612, n_layers=2,
                  drop_prob=0.5, lr=0.001, train_on_gpu=True, model='lstm'):
         super().__init__()
