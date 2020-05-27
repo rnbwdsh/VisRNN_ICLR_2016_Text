@@ -52,7 +52,7 @@ import pdb
 
 class CharRNN(nn.Module):
     def __init__(self, tokens, n_hidden=612, n_layers=2,
-                 drop_prob=0.5, lr=0.001, train_on_gpu=True, model='lstm'):
+                 drop_prob=0.5, lr=0.001, model='lstm'):
         super().__init__()
         self.drop_prob = drop_prob
         self.n_layers = n_layers
