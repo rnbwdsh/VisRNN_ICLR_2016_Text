@@ -1,6 +1,5 @@
 from model import *
 from utils import *
-import random
 
 # visualize gate value
 
@@ -33,7 +32,7 @@ def get_gates(test_set, vocab, config):
         raise Exception('No such a trained model! Please train a new model first!')
 
     # load a trained model
-    char_rnn = new_CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    char_rnn = CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     char_rnn.eval()
     # ship to gpu if possible
