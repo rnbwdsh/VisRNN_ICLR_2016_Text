@@ -10,8 +10,8 @@ from .LSTM import *
 import pdb
 
 
-'''class CharRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, model="lstm", n_layers=1):
+class CharRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, model = "lstm", n_layers = 1):
         super(CharRNN, self).__init__()
 
         self.model = model.lower()
@@ -20,14 +20,14 @@ import pdb
         self.output_size = output_size
         self.n_layers = n_layers
 
-        self.encoder = nn.Embedding(input_size, output_size)
+        self.encoder = nn.Embedding(input_size, input_size)
 
         if self.model == 'rnn':
-            self.rnn = RNN(input_size, hidden_size, n_layers, batch_first=True)
+            self.rnn = RNN(input_size, hidden_size, n_layers, batch_first = True)
         elif self.model == 'lstm':
-            self.rnn = LSTM(input_size, hidden_size, n_layers, batch_first=True)
+            self.rnn = LSTM(input_size, hidden_size, n_layers, batch_first = True)
         elif self.model == 'gru':
-            self.rnn = nn.GRU(input_size, hidden_size, n_layers, batch_first=True)
+            self.rnn = nn.GRU(input_size, hidden_size, n_layers, batch_first = True)
         else:
             raise Exception('No such a model! Exit.')
             sys.exit(-1)
@@ -35,10 +35,9 @@ import pdb
         self.decoder = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, init_hidden):
-        encoded = self.encoder(input)  # input: (batch)
-        output, hidden, gates = self.rnn(encoded.view(input.shape[0], 1, -1),
-                                         init_hidden)  # encoded: (batch, 1, input_size)
-        decoded = self.decoder(output)  # output: (batch, 1, hidden_size * num_directions)
+        encoded = self.encoder(input)   # input: (batch)
+        output, hidden, gates = self.rnn(encoded.view(input.shape[0], 1, -1), init_hidden)   # encoded: (batch, 1, input_size)
+        decoded = self.decoder(output) # output: (batch, 1, hidden_size * num_directions)
 
         return decoded, hidden, gates  # decoded: (batch, seq_len, output_size)
 
@@ -47,12 +46,12 @@ import pdb
             return (Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size)),
                     Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size)))
 
-        return Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size))'''
+        return Variable(torch.zeros(self.n_layers, batch_size, self.hidden_size))
 
 
-class CharRNN(nn.Module):
+class CharRNNs(nn.Module):
     def __init__(self, tokens, n_hidden=612, n_layers=2,
-                 drop_prob=0.5, lr=0.001, model='lstm'):
+                 drop_prob=0.5, lr=0.001, train_on_gpu=True, model='lstm'):
         super().__init__()
         self.drop_prob = drop_prob
         self.n_layers = n_layers
@@ -84,20 +83,16 @@ class CharRNN(nn.Module):
     def forward(self, x, hidden):
         ''' Forward pass through the network.
             These inputs are x, and the hidden/cell state `hidden`. '''
-        ## TODO: Get the outputs and the new hidden state from the lstm
-        self.to("cuda" if torch.cuda.is_available() else "cpu")
-        r_output, hidden = self.model(x, hidden)
 
+        ## TODO: Get the outputs and the new hidden state from the model
+        r_output, hidden = self.model(x, hidden)
         ## TODO: pass through a dropout layer
         out = self.dropout(r_output)
-
         # Stack up LSTM outputs using view
         # you may need to use contiguous to reshape the output
         out = out.contiguous().view(-1, self.n_hidden)
-
         ## TODO: put x through the fully-connected layer
         out = self.fc(out)
-
         # return the final output and the hidden state
         return out, hidden
 
@@ -108,13 +103,9 @@ class CharRNN(nn.Module):
         train_on_gpu = torch.cuda.is_available()
         weight = next(self.parameters()).data
 
-        if self.model_name=='lstm':
-            if (train_on_gpu):
-                hidden = (weight.new(self.n_layers, batch_size, self.n_hidden).zero_().cuda(),
-                          weight.new(self.n_layers, batch_size, self.n_hidden).zero_().cuda())
-            else:
-                hidden = (weight.new(self.n_layers, batch_size, self.n_hidden).zero_(),
-                          weight.new(self.n_layers, batch_size, self.n_hidden).zero_())
+        if self.model_name == 'lstm':# h0 and c0
+            hidden = (weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)),
+                      weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)))
         else:
-            hidden = weight.new(self.n_layers, batch_size, self.n_hidden)
+            hidden = weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden))
         return hidden

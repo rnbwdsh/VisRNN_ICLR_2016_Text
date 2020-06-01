@@ -7,6 +7,9 @@ from model import *
 from utils import *
 from config import *
 
+'''
+'''
+
 
 def train(train_data, val_data, vocab, config, clip=5):
     ''' Training a network
@@ -22,7 +25,7 @@ def train(train_data, val_data, vocab, config, clip=5):
 
     '''
     train_on_gpu = torch.cuda.is_available()
-    net = CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    net = CharRNNs(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     net.train()
     epochs = config.max_epochs
     batch_size = config.batch_size
@@ -44,7 +47,8 @@ def train(train_data, val_data, vocab, config, clip=5):
     for e in range(epochs):
         # initialize hidden state
         h = net.init_hidden(batch_size)
-
+        if torch.cuda.is_available() and config.cuda:
+            h = tuple([each.cuda() for each in h])
         for x, y in get_batches(data, batch_size, seq_length):
 
             counter += 1
@@ -53,12 +57,10 @@ def train(train_data, val_data, vocab, config, clip=5):
             x = one_hot_encode(x, n_chars)
             inputs, targets = torch.from_numpy(x), torch.from_numpy(y)
 
-            if (train_on_gpu):
-                inputs, targets = inputs.cuda(), targets.cuda()
-
             # Creating new variables for the hidden state, otherwise
             # we'd backprop through the entire training history
-            h = tuple([each.data for each in h])
+
+
 
             # zero accumulated gradients
             net.zero_grad()
@@ -68,6 +70,8 @@ def train(train_data, val_data, vocab, config, clip=5):
 
             # calculate the loss and perform backprop
             loss = criterion(output, targets.view(batch_size * seq_length))
+            for each in h:
+                each.detach()
             loss.backward()
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
             nn.utils.clip_grad_norm_(net.parameters(), clip)
@@ -86,7 +90,8 @@ def train(train_data, val_data, vocab, config, clip=5):
 
                     # Creating new variables for the hidden state, otherwise
                     # we'd backprop through the entire training history
-                    val_h = tuple([each.data for each in val_h])
+                    if config.model=='lstm':
+                        val_h = tuple([each.data for each in val_h])
 
                     inputs, targets = x, y
                     if train_on_gpu:
@@ -111,7 +116,7 @@ def pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
         train(train_set, val_set, (int_to_char,char_to_int), config)
 
     # load a trained model
-    net = CharRNN(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    net = CharRNNs(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     net.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     net.eval()
     batch_size = config.batch_size
@@ -169,10 +174,10 @@ if __name__ == '__main__':
     config = get_config()  # get configuration parameters
 
     # train_set: (input_set, target_set); input_set: (nbatches, batch_size, seq_length)
-    train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(
-        config)  # val_set and test_set are similar to train_set
+    #train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(config)  # val_set and test_set are similar to train_set
 
     # train(train_set, val_set, len(char_to_int), config)
+    train_set, val_set, test_set, (char_to_int, int_to_char) = create_datasets(config)  # val_set and test_set are similar to train_set
 
 
-    pred(test_set, train_set, val_set, int_to_char, char_to_int, config,5)
+    pred(test_set, train_set, val_set, int_to_char, char_to_int, config,2)

@@ -30,7 +30,7 @@ def get_config(**kwargs):
     parser.add_argument('--input_file', type=str, default='text', help='input text. Should be in ASCII format.')
 
     # model params
-    parser.add_argument('--model', type=str, default="lstm", help='lstm or gru')
+    parser.add_argument('--model', type=str, default="gru", help='lstm,rnn or gru')
     parser.add_argument('--hidden_size', type=int, default=128, help='size of RNN internal state')
     parser.add_argument('--n_layers', type=int, default=2, help='number of layers in the RNN')
 
