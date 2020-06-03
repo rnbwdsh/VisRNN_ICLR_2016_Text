@@ -46,6 +46,8 @@ def get_config(**kwargs):
     parser.add_argument('--print_interval', type=int, default=10,
                         help='how many steps/minibatches between printing out the loss')
     parser.add_argument('--model_dir', type=str, default='models', help='directory for trained model')
+    parser.add_argument('--log_dir', type=str, default='logs', help='directory for trained model log files')
+
 
     # gpu
     parser.add_argument('--cuda', action='store_true', default=True, help='whether to use gpu acceleration')

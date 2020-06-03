@@ -51,7 +51,7 @@ class CharRNN(nn.Module):
 
 class CharRNNs(nn.Module):
     def __init__(self, tokens, n_hidden=612, n_layers=2,
-                 drop_prob=0.5, lr=0.001, train_on_gpu=True, model='lstm'):
+                 drop_prob=0.5, lr=0.001, model='lstm'):
         super().__init__()
         self.drop_prob = drop_prob
         self.n_layers = n_layers
@@ -81,6 +81,7 @@ class CharRNNs(nn.Module):
         self.fc = nn.Linear(n_hidden, len(self.char2int.keys()))
 
     def forward(self, x, hidden):
+        self.to("cuda" if torch.cuda.is_available() else "cpu")
         ''' Forward pass through the network.
             These inputs are x, and the hidden/cell state `hidden`. '''
 
@@ -104,8 +105,12 @@ class CharRNNs(nn.Module):
         weight = next(self.parameters()).data
 
         if self.model_name == 'lstm':# h0 and c0
-            hidden = (weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)),
-                      weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)))
+            if train_on_gpu:
+                hidden = (weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden).cuda()),
+                          weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)).cuda())
+            else:
+                hidden = (weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)),
+                        weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden)))
         else:
             hidden = weight.new(torch.zeros(self.n_layers, batch_size, self.n_hidden))
         return hidden
