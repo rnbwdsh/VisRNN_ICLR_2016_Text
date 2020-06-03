@@ -10,7 +10,6 @@ from config import *
 '''
 '''
 
-
 def train(train_data, val_data, vocab, config, clip=5):
     ''' Training a network
 
@@ -26,6 +25,7 @@ def train(train_data, val_data, vocab, config, clip=5):
     '''
     train_on_gpu = torch.cuda.is_available()
     net = CharRNNs(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    torch.manual_seed(42)
     net.train()
     epochs = config.max_epochs
     batch_size = config.batch_size
@@ -47,20 +47,19 @@ def train(train_data, val_data, vocab, config, clip=5):
     for e in range(epochs):
         # initialize hidden state
         h = net.init_hidden(batch_size)
-        if torch.cuda.is_available() and config.cuda:
-            h = tuple([each.cuda() for each in h])
         for x, y in get_batches(data, batch_size, seq_length):
-
             counter += 1
-
+            if config.model == 'lstm':
+                if torch.cuda.is_available() and config.cuda:
+                    h = tuple([each.cuda() for each in h])
+                else:
+                    h = tuple([each.data for each in h])
             # One-hot encode our data and make them Torch tensors
             x = one_hot_encode(x, n_chars)
             inputs, targets = torch.from_numpy(x), torch.from_numpy(y)
 
             # Creating new variables for the hidden state, otherwise
             # we'd backprop through the entire training history
-
-
 
             # zero accumulated gradients
             net.zero_grad()
@@ -70,8 +69,9 @@ def train(train_data, val_data, vocab, config, clip=5):
 
             # calculate the loss and perform backprop
             loss = criterion(output, targets.view(batch_size * seq_length))
-            for each in h:
-                each.detach()
+            if config.model!='lstm':
+                h.detach_()
+                h = h.detach_()
             loss.backward()
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
             nn.utils.clip_grad_norm_(net.parameters(), clip)
@@ -90,7 +90,7 @@ def train(train_data, val_data, vocab, config, clip=5):
 
                     # Creating new variables for the hidden state, otherwise
                     # we'd backprop through the entire training history
-                    if config.model=='lstm':
+                    if config.model == 'lstm':
                         val_h = tuple([each.data for each in val_h])
 
                     inputs, targets = x, y
@@ -111,34 +111,37 @@ def train(train_data, val_data, vocab, config, clip=5):
     torch.save(net.state_dict(), path.join(config.model_dir, config.model + '.pth'))
 
 
-def pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
-    if not path.exists(path.join(config.model_dir, config.model + '.pth')):
-        train(train_set, val_set, (int_to_char,char_to_int), config)
+def pred(test_set, train_set, val_set, int_to_char, char_to_int, config, top_k):
+    if not path.exists(path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth')):
+        train(train_set, val_set, (int_to_char, char_to_int), config)
 
     # load a trained model
-    net = CharRNNs(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
-    net.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
+    net = CharRNNs(tokens=(int_to_char, char_to_int), n_hidden=config.hidden_size, model=config.model,
+                   n_layers=config.n_layers)
+    net.load_state_dict(torch.load(path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth')))
     net.eval()
     batch_size = config.batch_size
     seq_length = config.seq_length
     test_h = net.init_hidden(batch_size)
     train_on_gpu = torch.cuda.is_available()
+    criterion = nn.CrossEntropyLoss()
 
     for x, y in get_batches(test_set, batch_size, seq_length):
         # One-hot encode our data and make them Torch tensors
         x = one_hot_encode(x, len(char_to_int.keys()))
         x, y = torch.from_numpy(x), torch.from_numpy(y)
 
-
         # Creating new variables for the hidden state, otherwise
         # we'd backprop through the entire training history
-        test_h = tuple([each.data for each in test_h])
+        if config.model == 'lstm':
+            test_h = tuple([each.data for each in test_h])
 
         inputs, targets = x, y
         if train_on_gpu:
             inputs, targets = inputs.cuda(), targets.cuda()
 
         out, test_h = net(inputs, test_h)
+        loss = criterion(out, targets.view(batch_size * seq_length))
         # get the character probabilities
         # apply softmax to get p probabilities for the likely next character giving x
         p = F.softmax(out, dim=1).data
@@ -162,22 +165,17 @@ def pred(test_set, train_set, val_set, int_to_char, char_to_int, config,top_k):
             chars.append(char)
         chars = np.array(chars)
         accuracy = float(np.where(chars == targets.flatten().numpy())[0].size) / chars.size
-        print('Overall Accuracy:',accuracy)
-
-
-
-
-
+        print('Overall Accuracy:', accuracy, 'Test_loss:',loss)
 
 
 if __name__ == '__main__':
     config = get_config()  # get configuration parameters
 
     # train_set: (input_set, target_set); input_set: (nbatches, batch_size, seq_length)
-    #train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(config)  # val_set and test_set are similar to train_set
+    # train_set, val_set, test_set, (char_to_int, int_to_char) = create_dataset(config)  # val_set and test_set are similar to train_set
 
     # train(train_set, val_set, len(char_to_int), config)
-    train_set, val_set, test_set, (char_to_int, int_to_char) = create_datasets(config)  # val_set and test_set are similar to train_set
+    train_set, val_set, test_set, (char_to_int, int_to_char) = create_datasets(
+        config)  # val_set and test_set are similar to train_set
 
-
-    pred(test_set, train_set, val_set, int_to_char, char_to_int, config,2)
+    pred(test_set, train_set, val_set, int_to_char, char_to_int, config, 2)
