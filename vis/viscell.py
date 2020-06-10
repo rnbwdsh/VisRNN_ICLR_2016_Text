@@ -2,7 +2,7 @@ import json
 
 import os.path as path
 import numpy as np
-
+from utils import *
 from model import *
 
 import pdb
@@ -10,79 +10,47 @@ import pdb
 
 def vis_cell(test_set, int_to_char, char_to_int, config):
     # no trained model, train a new one
-    if not path.exists(path.join(config.model_dir, config.model + '.pth')):
+    if not path.exists(path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth')):
         raise Exception('No such a trained model! Please train a new model first!')
 
     # load a trained model
-    char_rnn = new_CharRNN(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
-    char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
+    char_rnn = CharRNNs(tokens=(int_to_char,char_to_int), n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth')))
     char_rnn.eval()
-
-    # ship to gpu if possible
-    if torch.cuda.is_available() and config.cuda:
-        char_rnn.cuda()
-
-    # prepare test data
-    test_input_set, _ = test_set[0], test_set[1]  # test_input_set: (test_batches, batch_size, seq_length)
-
-    # randomly choose a sequence in test set to warm up the network
-    test_batch_idx = np.random.choice(test_input_set.shape[0])  # random batch index
-    test_seq_idx = np.random.choice(config.batch_size)  # random sequence index
-    warmup_seq = test_input_set[test_batch_idx][test_seq_idx].unsqueeze(0)  # random sequence
 
     # initialize hidden state
     hidden = char_rnn.init_hidden(1)  # here, batch_size = 1
-
-    # ship to gpu if possible
     if torch.cuda.is_available() and config.cuda:
-        warmup_seq = warmup_seq.cuda()
         hidden = tuple([x.cuda() for x in hidden])
-
-    # warmup network
-    for i in range(config.seq_length):
-        # get final hidden state
-        _, hidden, _ = char_rnn(Variable(warmup_seq[:, i]), hidden)
 
     seq = []  # store all test sequences in character form
     cell = []  # 2d array, store all cell state values; each character corresponds to a row; each row is a c_n
     stop_flag = False  # flag to stop
-    for test_batch_idx in range(1, test_input_set.shape[0] + 1):
+    counter = 0
+    for x, y in get_batches(test_set, config.batch_size, config.seq_length):
+        counter+=1
+        hidden = char_rnn.init_hidden(config.batch_size)  # here, batch_size = 1
+        if torch.cuda.is_available() and config.cuda:
+            hidden = tuple([x.cuda() for x in hidden])
+        # One-hot encode our data and make them Torch tensors
+        x = one_hot_encode(x, len(char_to_int.keys()))
+        x, y = torch.from_numpy(x), torch.from_numpy(y)
 
-        # whether to stop
-        if stop_flag:
-            break
+        # Creating new variables for the hidden state, otherwise
+        # we'd backprop through the entire training history
+        if config.model == 'lstm':
+            hidden = tuple([each.data for each in hidden])
 
-        # for every batch
-        test_batch = test_input_set[test_batch_idx - 1]
-        # for every sequence in this batch
-        for test_seq_idx in range(1, config.batch_size + 1):
-
-            # whether to stop
-            if (config.batch_size * (test_batch_idx - 1) + test_seq_idx) * config.seq_length > config.max_vis_char:
-                stop_flag = True
-                break
-
-            # current sequence
-            test_seq = test_batch[test_seq_idx - 1]
-            # append to seq
-            seq.extend([int_to_char[x.item()] for x in test_seq])  # do not use append() function
-
-            # (seq_len) -> (1, seq_len)
-            test_seq = test_seq.view(1, -1)
-
-            # ship to gpu if possible
-            if torch.cuda.is_available() and config.cuda:
-                test_seq = test_seq.cuda()
-
-            # view one sequence as a batch
-            for i in range(config.seq_length):  # for every time step in this batch
-                # forward pass, we do not care about output
-                _, hidden, _ = char_rnn(Variable(test_seq[:, i]), hidden)
-                (_, c_n) = hidden  # c_n: (1, 1, hidden_size); ignore h_n
-                cell.append(c_n.data.cpu().squeeze().numpy())  # use append() to form a multi-dimensional array
-
+        inputs, targets = x, y
+        if config.cuda:
+            inputs, targets = inputs.cuda(), targets.cuda()
+            hidden = tuple([each.cuda() for each in hidden])
+        for i in range(config.seq_length):
+            out, hidden = char_rnn(inputs, hidden)
+            (_,c_n) = hidden
+            cell.append(c_n.data.cpu().squeeze().numpy())
             # print progress information
-            print('Processing [batch: %d, sequence: %3d]...' % (test_batch_idx, test_seq_idx))
+            print('Processing [batch: %d, sequence: %3d]...' % (counter, i))
 
     # write seq and cell into a json file for visualization
     char_cell = {}
