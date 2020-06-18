@@ -28,11 +28,11 @@ def get_saturated(gate, left_thresh, right_thresh):
 
 def get_gates(test_set, vocab, config):
     # no trained model, train a new one
-    if not path.exists(path.join(config.model_dir, config.model + '.pth')):
+    if not path.exists(path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth')):
         raise Exception('No such a trained model! Please train a new model first!')
 
     # load a trained model
-    char_rnn = CharRNN(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
+    char_rnn = CharRNNs(tokens=vocab, n_hidden=config.hidden_size, model=config.model, n_layers=config.n_layers)
     char_rnn.load_state_dict(torch.load(path.join(config.model_dir, config.model + '.pth')))
     char_rnn.eval()
     # ship to gpu if possible
