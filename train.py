@@ -108,7 +108,23 @@ def train(train_data, val_data, vocab, config, clip=5):
                       "Step: {}...".format(counter),
                       "Loss: {:.4f}...".format(loss.item()),
                       "Val Loss: {:.4f}".format(np.mean(val_losses)))
-    torch.save(net.state_dict(), path.join(config.model_dir, config.model + '.pth'))
+                try:# make log directory if not there
+                    os.mkdir(config.log_dir)
+                except:
+                    pass
+
+                with open(
+                        path.join(config.log_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.log'),
+                        'a') as log:
+                    log.write("Epoch: {}/{}...".format(e + 1, epochs) + "Step: {}...".format(counter) +
+                              "Loss: {:.4f}...".format(loss.item()) +
+                              "Val Loss: {:.4f}".format(np.mean(val_losses))+'\n')
+    try:# make models directory if not there
+        os.mkdir(config.model_dir)
+    except:
+        pass
+    torch.save(net.state_dict(),
+               path.join(config.model_dir, config.model + '_' + str(config.hidden_size) + '_' + str(config.n_layers) + '.pth'))
 
 
 def pred(test_set, train_set, val_set, int_to_char, char_to_int, config, top_k):

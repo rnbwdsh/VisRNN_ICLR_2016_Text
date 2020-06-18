@@ -4,9 +4,10 @@ import torch.nn.functional as F
 
 import pdb
 
+
 class RNN(nn.Module):
 
-    def __init__(self, input_size, hidden_size, num_layers = 1, batch_first = True):
+    def __init__(self, input_size, hidden_size, num_layers=1, batch_first=True):
         super(RNN, self).__init__()
 
         self.input_size = input_size
@@ -15,15 +16,15 @@ class RNN(nn.Module):
         self.batch_first = batch_first
 
         # note that nn.Linear contains bias
-        self.Wih_b = nn.Linear(input_size, hidden_size, bias = True)    # input weight
-        self.Whh_b = nn.Linear(hidden_size, hidden_size, bias = True)   # hidden weight
+        self.Wih_b = nn.Linear(input_size, hidden_size, bias=True)  # input weight
+        self.Whh_b = nn.Linear(hidden_size, hidden_size, bias=True)  # hidden weight
 
     def forward(self, input, hidden):
 
         # recurrence helper, function for one time step
         def recurrence(input, hidden):
             # previous state
-            hx = hidden # hx: (num_layers, batch_size, hidden_size)
+            hx = hidden  # hx: (num_layers, batch_size, hidden_size)
             # current state
             hy = F.tanh(self.Wih_b(input) + self.Whh_b(hx))
 
@@ -32,10 +33,10 @@ class RNN(nn.Module):
         if self.batch_first:
             input = input.transpose(0, 1)
 
-        output = [] # a list, call cat() before returned
-        steps = range(input.size(0))    # seq_len
+        output = []  # a list, call cat() before returned
+        steps = range(input.size(0))  # seq_len
 
-        for i in steps: # process for each tiem step
+        for i in steps:  # process for each tiem step
             hidden = recurrence(input[i], hidden)
             if isinstance(hidden, tuple):
                 output.append(hidden[0])

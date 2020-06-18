@@ -21,7 +21,7 @@ def vis_cell(test_set, int_to_char, char_to_int, config):
                                                   config.model + '_' + str(config.hidden_size) + '_' + str(
                                                       config.n_layers) + '.pth')))
     char_rnn.eval()
-
+    #problem here!!!!
     # initialize hidden state
     hidden = char_rnn.init_hidden(1)  # here, batch_size = 1
     if torch.cuda.is_available() and config.cuda:
