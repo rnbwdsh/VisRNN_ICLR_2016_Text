@@ -22,12 +22,12 @@ def get_config(**kwargs):
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--data_dir', type = str, default = '/localdisk/hh/dataset/text/warpeace',
+    parser.add_argument('--data_dir', type = str, default = '.',
                         help = 'data directory. Should contain the file input.txt with input data')
     parser.add_argument('--input_file', type = str, default = 'text', help = 'input text. Should be in ASCII format.')
 
     # model params
-    parser.add_argument('--model', type = str, default = "lstm", help = 'lstm or gru')
+    parser.add_argument('--model', type = str, default = "rnn", help = 'lstm or gru')
     parser.add_argument('--hidden_size', type = int, default = 128, help = 'size of RNN internal state')
     parser.add_argument('--n_layers', type = int, default = 2, help = 'number of layers in the RNN')
 

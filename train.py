@@ -9,6 +9,8 @@ from config import *
 
 import pdb
 
+torch.autograd.set_detect_anomaly(True)
+
 # build and train a model
 def train(train_set, val_set, vocab_size, config):
 
@@ -60,15 +62,15 @@ def train(train_set, val_set, vocab_size, config):
                                       Variable(train_target_set[batch_idx - 1][:, i]))
 
                 # detach hidden state from current computational graph for back-prop
-                for x in hidden:
-                    x.detach_()
+                #for x in hidden:
+                #    x.detach()
 
                 # backward
-                loss.backward()
                 optimizer.step()
+                loss.backward()
 
                 # print statistics
-                running_loss += loss.data[0]
+                running_loss += loss.item()
                 if batch_idx % config.print_interval == 0:  # print_interval batches
                     print('[%d, %4d] loss: %.3f' % (epoch_idx, batch_idx, running_loss / config.print_interval))
                     running_loss = 0.0

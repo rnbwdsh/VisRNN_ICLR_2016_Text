@@ -1,12 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 import pdb
 
 class RNN(nn.Module):
 
-    def __init__(self, input_size, hidden_size, num_layers = 1, batch_first = True):
+    def ja shit__init__(self, input_size, hidden_size, num_layers = 1, batch_first = True):
         super(RNN, self).__init__()
 
         self.input_size = input_size
@@ -23,9 +22,9 @@ class RNN(nn.Module):
         # recurrence helper, function for one time step
         def recurrence(input, hidden):
             # previous state
-            hx = hidden # hx: (num_layers, batch_size, hidden_size)
+            hx = hidden[0] # hx: (num_layers, batch_size, hidden_size)
             # current state
-            hy = F.tanh(self.Wih_b(input) + self.Whh_b(hx))
+            hy = torch.tanh(self.Wih_b(input) + self.Whh_b(hx))
 
             return hy
 
@@ -47,4 +46,4 @@ class RNN(nn.Module):
         if self.batch_first:
             output = output.transpose(0, 1)
 
-        return output, hidden
+        return output, hidden, None

@@ -50,6 +50,7 @@ def text_to_tensor(input_file, vocab_file, data_file):
             if not raw_data: # end of file
                 break
             for i in range(len(raw_data)):
+                assert raw_data[i] in string.printable
                 data[currlen + i] = char_to_int[raw_data[i]]
             currlen += len(raw_data)
     f.close()

@@ -36,7 +36,7 @@ class CharRNN(nn.Module):
     def forward(self, input, init_hidden):
         encoded = self.encoder(input)   # input: (batch)
         output, hidden, gates = self.rnn(encoded.view(input.shape[0], 1, -1), init_hidden)   # encoded: (batch, 1, input_size)
-        decoded = self.decoder(output) # output: (batch, 1, hidden_size * num_directions)
+        decoded = self.decoder(output.T) # output: (batch, 1, hidden_size * num_directions)
 
         return decoded, hidden, gates  # decoded: (batch, seq_len, output_size)
 
