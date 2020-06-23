@@ -165,7 +165,7 @@ def pred(test_set, train_set, val_set, int_to_char, char_to_int, config, top_k):
             chars.append(char)
         chars = np.array(chars)
         accuracy = float(np.where(chars == targets.flatten().numpy())[0].size) / chars.size
-        print('Overall Accuracy:', accuracy, 'Test_loss:',loss)
+        print('Overall Accuracy:', accuracy, 'Test_loss:',  loss.item())
 
 
 if __name__ == '__main__':
@@ -178,4 +178,4 @@ if __name__ == '__main__':
     train_set, val_set, test_set, (char_to_int, int_to_char) = create_datasets(
         config)  # val_set and test_set are similar to train_set
 
-    pred(test_set, train_set, val_set, int_to_char, char_to_int, config, 2)
+    pred(test_set, train_set, val_set, int_to_char, char_to_int, config, 5)
